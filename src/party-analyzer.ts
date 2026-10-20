@@ -4,14 +4,14 @@ import {
 } from "./types.js";
 import { getTypeEffectivenessMulti } from "./type-effectiveness.js";
 
-const ALL_ROLES:PokemonRole[] = [
-  "physical-attacker","special-attacker","physical-wall",
-  "special-wall","sweeper","support",
+const ALL_ROLES: PokemonRole[] = [
+  "physical-attacker", "special-attacker", "physical-wall",
+  "special-wall", "sweeper", "support",
 ];
 
-function analyzeTypeDefense(party:PartyMember[]):TypeDefenseResult[] {
+function analyzeTypeDefense(party: PartyMember[]): TypeDefenseResult[] {
   return POKEMON_TYPES.map((attackType) => {
-    let weakCount=0, resistCount=0, immuneCount=0;
+    let weakCount = 0, resistCount = 0, immuneCount = 0;
 
     for (const member of party) {
       const multiplier = getTypeEffectivenessMulti(attackType, member.pokemon.types);
@@ -20,16 +20,19 @@ function analyzeTypeDefense(party:PartyMember[]):TypeDefenseResult[] {
       else if (multiplier < 1) resistCount++;
     }
 
-    let severity:Severity = "good";
-    if (weakCount >= 3 && resistCount === 0) severity = "critical";
+    // An immune member can switch into the attack just as safely as a resisting one.
+    const safeSwitchIns = resistCount + immuneCount;
+
+    let severity: Severity = "good";
+    if (weakCount >= 3 && safeSwitchIns === 0) severity = "critical";
     else if (weakCount >= 2) severity = "warning";
 
     return { attackType, weakCount, resistCount, immuneCount, severity };
   });
 }
 
-function analyzeRoleBalance(party:PartyMember[]):RoleBalance {
-  const roles = Object.fromEntries(ALL_ROLES.map(role => [role,0])) as Record<PokemonRole, number>;
+function analyzeRoleBalance(party: PartyMember[]): RoleBalance {
+  const roles = Object.fromEntries(ALL_ROLES.map(role => [role, 0])) as Record<PokemonRole, number>;
 
   for (const member of party) {
     for (const role of member.pokemon.roles) roles[role]++;
@@ -38,15 +41,15 @@ function analyzeRoleBalance(party:PartyMember[]):RoleBalance {
   return { roles, missingRoles: ALL_ROLES.filter(role => roles[role] === 0) };
 }
 
-function analyzePhysicalSpecial(party:PartyMember[]) {
-  let physicalAttackers=0, specialAttackers=0;
+function analyzePhysicalSpecial(party: PartyMember[]) {
+  let physicalAttackers = 0, specialAttackers = 0;
 
-  for (const {pokemon} of party) {
+  for (const { pokemon } of party) {
     if (pokemon.roles.includes("physical-attacker")) physicalAttackers++;
     if (pokemon.roles.includes("special-attacker")) specialAttackers++;
   }
 
-  let severity:Severity = "good";
+  let severity: Severity = "good";
   if ((physicalAttackers >= 4 && specialAttackers === 0) ||
       (specialAttackers >= 4 && physicalAttackers === 0)) severity = "critical";
   else if ((physicalAttackers > 0 && specialAttackers === 0) ||
@@ -55,9 +58,9 @@ function analyzePhysicalSpecial(party:PartyMember[]) {
   return { physicalAttackers, specialAttackers, severity };
 }
 
-function analyzeOffenseGaps(party:PartyMember[]):PokemonType[] {
+function analyzeOffenseGaps(party: PartyMember[]): PokemonType[] {
   return POKEMON_TYPES.filter((targetType) =>
-    !party.some(({pokemon}) =>
+    !party.some(({ pokemon }) =>
       pokemon.types.some((attackType) =>
         getTypeEffectivenessMulti(attackType, [targetType]) > 1,
       ),
@@ -66,9 +69,9 @@ function analyzeOffenseGaps(party:PartyMember[]):PokemonType[] {
 }
 
 function calculateScore(
-  defenseResults:TypeDefenseResult[],
-  physicalSpecial:ReturnType<typeof analyzePhysicalSpecial>,
-):number {
+  defenseResults: TypeDefenseResult[],
+  physicalSpecial: ReturnType<typeof analyzePhysicalSpecial>,
+): number {
   let score = 100;
   for (const result of defenseResults) {
     if (result.severity === "critical") score -= 8;
@@ -79,7 +82,17 @@ function calculateScore(
   return Math.max(0, Math.min(100, score));
 }
 
-export function analyzeParty(party:PartyMember[]):PartyDiagnosis {
+/**
+ * Diagnoses a party's defensive weaknesses, offensive gaps and role balance.
+ *
+ * @throws {RangeError} if the party is empty — there is nothing to score,
+ *   and returning a perfect 100 would be misleading.
+ */
+export function analyzeParty(party: PartyMember[]): PartyDiagnosis {
+  if (party.length === 0) {
+    throw new RangeError("analyzeParty: party must contain at least one member");
+  }
+
   const defenseResults = analyzeTypeDefense(party);
   const physicalSpecial = analyzePhysicalSpecial(party);
 

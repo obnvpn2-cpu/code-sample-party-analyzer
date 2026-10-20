@@ -25,9 +25,22 @@ This sample does **not** contain:
 
 The code has been reorganized so the algorithms can be understood and tested without the original application's private dependencies.
 
+## What to look at
+- Type-effectiveness lookup over the 18-type chart, including dual types and immunities
+- Party-wide defensive analysis that separates stacked weaknesses from ones a teammate can safely switch into
+- Stat-based role scoring with tiered thresholds instead of hard cut-offs
+- Candidate ranking that combines several weighted signals into one explainable score
+
+## Suggested reading order
+1. `src/type-effectiveness.ts`
+2. `src/party-analyzer.ts`
+3. `src/role-classifier.ts`
+4. `src/candidate-filter.ts`
+
 ## Tech stack
 - TypeScript
 - Vitest
+- Node.js 22.12 or later is required (22.x, 24.x, or 26+, matching Vitest 5)
 
 ## Run
 ```bash
@@ -45,7 +58,9 @@ src/
   party-analyzer.ts
   candidate-filter.ts
 tests/
+  type-effectiveness.test.ts
   party-analyzer.test.ts
+  role-classifier.test.ts
   candidate-filter.test.ts
 ```
 
